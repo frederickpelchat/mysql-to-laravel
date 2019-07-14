@@ -4,7 +4,7 @@
 
 Script that reverse engineer a database schema by interpreting the standard ANSI information_schema table and writes a set of Laravel migrations out of it.
 
-The project is called mysql-to-laravel but could theorically be used with any kind of RDBMS that supports the ANSI information_schema table:
+The project is called mysql-to-laravel but could theorically be used with any kind of RDBMS that supports the ANSI information_schema table as the likes of:
 
 - Microsoft SQL Server
 - MySQL
