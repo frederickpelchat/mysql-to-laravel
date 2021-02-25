@@ -2,14 +2,15 @@
 
 <?php
 /*
- * (c) Frederick Pelchat 2014-2019
+ * (c) Frederick Pelchat 2014-2021
  */
 
-$migrations_dst_dir = '../laravel_app/database/migrations/';
-$db_host = 'localhost';
-$db_user = 'root';
-$db_pass = 'toortoor';
-$db_name = 'master';
+$migrations_dst_dir = 'laravel_app/database/migrations/';
+$db_host = '';
+$db_port = 3306;
+$db_user = '';
+$db_pass = '';
+$db_name = '';
 
 #do not edit below this line
 $daily_ndx = 000000;
@@ -45,11 +46,11 @@ function migration_head($fp, $table) {
 }
 
 function create_table_tail($fp, $unique_keys = [], $indexes = []) {
-  foreach($unique_keys as $uk) {
+  foreach($unique_keys as $ukname => $uk) {
     if(count($uk) == 1) {
-      fprintf($fp, "      \$table->unique('%s');\n", $uk[0]);
+      fprintf($fp, "      \$table->unique('%s', '%s');\n", $uk[0], $ukname);
     } else { //compound key
-      fprintf($fp, "      \$table->unique(['%s']);\n", implode("','", $uk));
+      fprintf($fp, "      \$table->unique(['%s'], '%s');\n", implode("','", $uk), $ukname);
     }
   }
 
@@ -102,23 +103,14 @@ function create_table_column($fp, $column, $type = [], $unsigned = false, $null 
 function create_table_foreign($fp, $table, $column, $referenced_table, $referenced_column) {
   fprintf($fp, "\n    Schema::table('%s', function (Blueprint \$table) {\n", $table);
   fprintf($fp, "      DB::statement('SET FOREIGN_KEY_CHECKS=0;');\n");
-  fprintf($fp, "      /*\n");
-  fprintf($fp, "       * Doesnt work because of some dumb behaviour\n");
-  fprintf($fp, "       */\n");
-  fprintf($fp, "      /*\n");
-  fprintf($fp, "      \$table->foreign('%s')\n", $column);
-  fprintf($fp, "        ->references('%s')->on('%s')\n", $referenced_table, $referenced_column);
-  fprintf($fp, "        ->onDelete('cascade')\n");
-  fprintf($fp, "        ->onUpdate('cascade');\n");
-  fprintf($fp, "       */\n");
   fprintf($fp, "      DB::statement('ALTER TABLE `%s` 
-ADD CONSTRAINT %s_%s_foreign 
-FOREIGN KEY (`%s`) 
-REFERENCES `%s` (`%s`) 
-ON DELETE CASCADE 
-ON UPDATE CASCADE');\n", $table, strtolower($table), strtolower($column), $column, $referenced_table, $referenced_column);
+        ADD CONSTRAINT %s_%s_foreign
+        FOREIGN KEY (`%s`)
+        REFERENCES `%s` (`%s`)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE');\n", $table, strtolower($table), strtolower($column), $column, $referenced_table, $referenced_column);
   fprintf($fp, "      DB::statement('SET FOREIGN_KEY_CHECKS=1;');\n");
-  fprintf($fp, "   });\n");
+  fprintf($fp, "    });\n");
 }
 
 $all_tables_sql_fmt = "
@@ -134,7 +126,7 @@ IS_NULLABLE AS `Null`,
 COLUMN_KEY AS `Key`, 
 COLUMN_DEFAULT AS `Default`, 
 EXTRA AS `Extra`
-FROM COLUMNS  
+FROM INFORMATION_SCHEMA.COLUMNS
 WHERE TABLE_SCHEMA = DATABASE() AND 
 TABLE_NAME = '%s';
 ";
@@ -147,7 +139,7 @@ k.COLUMN_NAME,
 k.REFERENCED_TABLE_NAME, 
 k.REFERENCED_COLUMN_NAME
 FROM information_schema.TABLE_CONSTRAINTS i
-LEFT JOIN information_schema.KEY_COLUMN_USAGE k ON i.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+JOIN information_schema.KEY_COLUMN_USAGE k ON i.CONSTRAINT_NAME = k.CONSTRAINT_NAME
 WHERE i.CONSTRAINT_TYPE = 'FOREIGN KEY'
 AND i.TABLE_SCHEMA = DATABASE()
 AND i.TABLE_NAME = '%s';";
@@ -156,12 +148,12 @@ $all_uni_sql_fmt = "
 SELECT i.CONSTRAINT_NAME, 
 k.COLUMN_NAME 
 FROM information_schema.TABLE_CONSTRAINTS i
-LEFT JOIN information_schema.KEY_COLUMN_USAGE k ON i.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+JOIN information_schema.KEY_COLUMN_USAGE k ON i.CONSTRAINT_NAME = k.CONSTRAINT_NAME
 WHERE i.CONSTRAINT_TYPE = 'UNIQUE'
 AND i.TABLE_SCHEMA = DATABASE()
 AND i.TABLE_NAME = '%s';";
 
-$conn = mysqli_connect($db_host, $db_user, $db_pass);
+$conn = mysqli_connect($db_host, $db_user, $db_pass, $db_name, $db_port);
 mysqli_select_db($conn, $db_name);
 $res = mysqli_query($conn, sprintf($all_tables_sql_fmt));
 $rows = [];
